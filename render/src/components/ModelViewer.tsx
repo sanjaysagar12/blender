@@ -1,11 +1,29 @@
-import  { Suspense } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useRef, useEffect } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, useGLTF } from '@react-three/drei';
+import * as THREE from 'three';
 
 import type { GLTF } from 'three-stdlib';
 
 function Model({ url }: { url: string }) {
-  const gltf = useGLTF(url) as GLTF;
+  const gltf = useGLTF(url) as GLTF & { animations?: any[] };
+  const mixer = useRef<THREE.AnimationMixer | null>(null);
+
+  useEffect(() => {
+    if (gltf.animations && gltf.animations.length) {
+      mixer.current = new THREE.AnimationMixer(gltf.scene);
+      mixer.current.clipAction(gltf.animations[0]).play();
+    }
+    return () => {
+      mixer.current?.stopAllAction();
+      mixer.current?.uncacheRoot(gltf.scene as any);
+    };
+  }, [gltf, url]);
+
+  useFrame((_, delta) => {
+    mixer.current?.update(delta);
+  });
+
   return <primitive object={gltf.scene} />;
 }
 
